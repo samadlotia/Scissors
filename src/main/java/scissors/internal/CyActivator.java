@@ -1,8 +1,10 @@
-package org.gladstoneinstitutes.customgraphicsui.internal;
+package scissors.internal;
+
+import java.util.Properties;
 
 import org.osgi.framework.BundleContext;
+
 import org.cytoscape.service.util.AbstractCyActivator;
-import java.util.Properties;
 import org.cytoscape.work.ServiceProperties;
 
 public class CyActivator extends AbstractCyActivator {
@@ -14,5 +16,6 @@ public class CyActivator extends AbstractCyActivator {
   }
 
   public void start(BundleContext bc) {
+    super.registerAllServices(bc, new ScissorsPanel(), ezProps());
   }
 }
