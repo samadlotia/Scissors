@@ -6,6 +6,7 @@ import org.osgi.framework.BundleContext;
 
 import org.cytoscape.service.util.AbstractCyActivator;
 import org.cytoscape.work.ServiceProperties;
+import org.cytoscape.application.CyApplicationManager;
 
 public class CyActivator extends AbstractCyActivator {
   private static Properties ezProps(String... vals) {
@@ -16,6 +17,7 @@ public class CyActivator extends AbstractCyActivator {
   }
 
   public void start(BundleContext bc) {
-    super.registerAllServices(bc, new ScissorsPanel(), ezProps());
+    final CyApplicationManager appMgr = getService(bc, CyApplicationManager.class);
+    super.registerAllServices(bc, new ScissorsPanel(appMgr), ezProps());
   }
 }
