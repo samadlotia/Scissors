@@ -45,6 +45,9 @@ class ScissorsLayout extends AbstractTask {
         maxH = Math.max(maxH, groupSize.height);
       }
     }
+
+    netView.fitContent();
+    netView.updateView();
   }
 
   static final double NODE_X_SPACE = 10.0;
