@@ -10,6 +10,8 @@ import java.awt.event.ItemListener;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -25,6 +27,7 @@ import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyColumn;
 import org.cytoscape.model.CyRow;
 import org.cytoscape.model.CyTable;
+import org.cytoscape.model.CyNode;
 
 import org.cytoscape.application.CyApplicationManager;
 import org.cytoscape.application.events.SetCurrentNetworkEvent;
@@ -235,5 +238,18 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
       }
       return null;
     }
+  }
+
+  private List<List<CyNode>> groupOnDiscreteColumn(final CyNetwork network, final String col) {
+    final CyTable tbl = network.getDefaultNodeTable();
+    final Map<Object,List<CyNode>> valToNodes = new TreeMap<Object,List<CyNode>>();
+    for (final CyNode node : network.getNodeList()) {
+      final Object val = tbl.getRow(node.getSUID()).getRaw(col);
+      if (!valToNodes.containsKey(val)) {
+        valToNodes.put(val, new ArrayList<CyNode>());
+      }
+      valToNodes.get(val).add(node);
+    }
+    return new ArrayList<List<CyNode>>(valToNodes.values());
   }
 }
