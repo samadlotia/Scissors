@@ -5,8 +5,10 @@ import java.util.Properties;
 import org.osgi.framework.BundleContext;
 
 import org.cytoscape.service.util.AbstractCyActivator;
-import org.cytoscape.work.ServiceProperties;
 import org.cytoscape.application.CyApplicationManager;
+import org.cytoscape.work.ServiceProperties;
+import org.cytoscape.work.TaskManager;
+import org.cytoscape.work.swing.DialogTaskManager;
 
 public class CyActivator extends AbstractCyActivator {
   private static Properties ezProps(String... vals) {
@@ -18,6 +20,7 @@ public class CyActivator extends AbstractCyActivator {
 
   public void start(BundleContext bc) {
     final CyApplicationManager appMgr = getService(bc, CyApplicationManager.class);
-    super.registerAllServices(bc, new ScissorsPanel(appMgr), ezProps());
+    final TaskManager taskMgr = getService(bc, DialogTaskManager.class);
+    super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
   }
 }

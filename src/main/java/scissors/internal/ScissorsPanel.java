@@ -6,6 +6,8 @@ import java.awt.FlowLayout;
 
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 import java.util.Map;
 import java.util.TreeMap;
@@ -29,26 +31,34 @@ import org.cytoscape.model.CyRow;
 import org.cytoscape.model.CyTable;
 import org.cytoscape.model.CyNode;
 
+import org.cytoscape.view.model.CyNetworkView;
+
 import org.cytoscape.application.CyApplicationManager;
-import org.cytoscape.application.events.SetCurrentNetworkEvent;
-import org.cytoscape.application.events.SetCurrentNetworkListener;
+import org.cytoscape.application.events.SetCurrentNetworkViewEvent;
+import org.cytoscape.application.events.SetCurrentNetworkViewListener;
 import org.cytoscape.application.swing.CytoPanelComponent;
 import org.cytoscape.application.swing.CytoPanelName;
 
-class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
+import org.cytoscape.work.Task;
+import org.cytoscape.work.TaskIterator;
+import org.cytoscape.work.TaskManager;
+
+class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener {
   final CyApplicationManager appMgr;
   final ImageIcon icon;
   final JComboBox attrComboBox;
   final JTable valuesTable;
   final JButton cutBtn;
+  final TaskManager taskMgr;
 
-  public ScissorsPanel(final CyApplicationManager appMgr) {
+  public ScissorsPanel(final CyApplicationManager appMgr, final TaskManager taskMgr) {
     this.appMgr = appMgr;
+    this.taskMgr = taskMgr;
     icon = new ImageIcon(this.getClass().getResource("/icon.png"));
     attrComboBox = new JComboBox();
     valuesTable = new JTable(new ValuesTM());
     cutBtn = new JButton("Cut", icon);
-    setupUIForNetwork(appMgr.getCurrentNetwork());
+    setupUIForNetworkView(appMgr.getCurrentNetworkView());
   }
 
   public Component getComponent() {
@@ -85,9 +95,9 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
     return "Scissors ";
   }
 
-  public void handleEvent(SetCurrentNetworkEvent e) {
-    final CyNetwork net = e.getNetwork();
-    setupUIForNetwork(net);
+  public void handleEvent(SetCurrentNetworkViewEvent e) {
+    final CyNetworkView netView = e.getNetworkView();
+    setupUIForNetworkView(netView);
   }
 
   private void resetUI() {
@@ -113,14 +123,14 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
     comboBox.removeAllItems();
   }
 
-  private void setupUIForNetwork(final CyNetwork net) {
-    if (net == null) {
+  private void setupUIForNetworkView(final CyNetworkView netView) {
+    if (netView == null) {
       resetUI();
       return;
     }
     resetComboBox(attrComboBox);
 
-    final CyTable tbl = net.getDefaultNodeTable();
+    final CyTable tbl = netView.getModel().getDefaultNodeTable();
     for (final CyColumn col : tbl.getColumns()) {
       if (col.isImmutable()) {
         continue;
@@ -137,7 +147,12 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
     } else {
       attrComboBox.setEnabled(true);
       attrComboBox.addItemListener(new UpdateValuesList(tbl));
+
+      for (final ActionListener listener : cutBtn.getActionListeners()) {
+        cutBtn.removeActionListener(listener);
+      }
       cutBtn.setEnabled(true);
+      cutBtn.addActionListener(new RunLayout(netView));
     }
 
     updateValuesList(tbl);
@@ -251,5 +266,20 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkListener {
       valToNodes.get(val).add(node);
     }
     return new ArrayList<List<CyNode>>(valToNodes.values());
+  }
+
+  class RunLayout implements ActionListener {
+    final CyNetworkView netView;
+    public RunLayout(final CyNetworkView netView) {
+      this.netView = netView;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final CyNetwork net = appMgr.getCurrentNetwork();
+      final CyColumn col = ((CyColWrapper) attrComboBox.getSelectedItem()).getColumn();
+      final List<List<CyNode>> groups = groupOnDiscreteColumn(net, col.getName());
+      final Task task = new ScissorsLayout(netView, groups);
+      taskMgr.execute(new TaskIterator(task));
+    }
   }
 }
