@@ -6,7 +6,10 @@ import org.osgi.framework.BundleContext;
 
 import org.cytoscape.service.util.AbstractCyActivator;
 import org.cytoscape.application.CyApplicationManager;
+import org.cytoscape.application.swing.CySwingApplication;
+import org.cytoscape.model.CyNetworkManager;
 import org.cytoscape.work.ServiceProperties;
+import org.cytoscape.work.TaskFactory;
 import org.cytoscape.work.TaskManager;
 import org.cytoscape.work.swing.DialogTaskManager;
 
@@ -19,8 +22,17 @@ public class CyActivator extends AbstractCyActivator {
   }
 
   public void start(BundleContext bc) {
+    final CyNetworkManager netMgr = getService(bc, CyNetworkManager.class);
     final CyApplicationManager appMgr = getService(bc, CyApplicationManager.class);
+    final CySwingApplication swingApp = getService(bc, CySwingApplication.class);
     final TaskManager taskMgr = getService(bc, DialogTaskManager.class);
-    super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
+
+    //super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
+
+    final ImportNodeListTaskFactory importNodeListTF = new ImportNodeListTaskFactory(appMgr, swingApp, netMgr);
+    super.registerService(bc, importNodeListTF, TaskFactory.class, ezProps(
+      ServiceProperties.TITLE, "Node Lists...",
+      ServiceProperties.PREFERRED_MENU, "File.Import.Table"
+    ));
   }
 }
