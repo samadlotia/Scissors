@@ -27,12 +27,6 @@ public class CyActivator extends AbstractCyActivator {
     final CySwingApplication swingApp = getService(bc, CySwingApplication.class);
     final TaskManager taskMgr = getService(bc, DialogTaskManager.class);
 
-    //super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
-
-    final ImportNodeListTaskFactory importNodeListTF = new ImportNodeListTaskFactory(appMgr, swingApp, netMgr);
-    super.registerService(bc, importNodeListTF, TaskFactory.class, ezProps(
-      ServiceProperties.TITLE, "Node Lists...",
-      ServiceProperties.PREFERRED_MENU, "File.Import.Table"
-    ));
+    super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
   }
 }
