@@ -18,10 +18,10 @@ import javax.swing.JFileChooser;
 import javax.swing.JPopupMenu;
 import javax.swing.AbstractAction;
 
-import javax.swing.event.PopupMenuEvent;
-import javax.swing.event.PopupMenuListener;
-
 import javax.swing.table.AbstractTableModel;
+
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.ListSelectionEvent;
 
 import java.awt.Color;
 import java.awt.GridBagLayout;
@@ -46,14 +46,16 @@ public class ImportNodeListDialog {
   final CyNetworkManager netMgr;
   CyNetwork targetNetwork;
 
+  final JButton rmBtn;
   final JButton targetNetworkBtn;
   final FilesTableModel filesTableModel;
   final JTable table;
+  final JFileChooser chooser;
 
   static JButton newSimpleBtn(final String label) {
     final JButton btn = new JButton(label);
     btn.setFocusPainted(false);
-    btn.setMargin(new Insets(0, 3, 0, 3));
+    //btn.setMargin(new Insets(0, 3, 0, 3));
     btn.setFont(btn.getFont().deriveFont(Font.BOLD, 13.0f));
     return btn;
   }
@@ -66,21 +68,11 @@ public class ImportNodeListDialog {
     dialog = new JDialog(parent, "Import Node Lists");
     this.appMgr = appMgr;
     this.netMgr = netMgr;
-    targetNetwork = appMgr.getCurrentNetwork();
-
 
     targetNetworkBtn = new JButton();
-    updateTargetNetworkBtn();
+    targetNetworkBtn.setHorizontalAlignment(JButton.LEFT);
+    setTargetNetwork(appMgr.getCurrentNetwork());
     final JPopupMenu networksMenu = constructNetworksMenu(groupNetworksByRootNetwork(netMgr.getNetworkSet()));
-    networksMenu.addPopupMenuListener(new PopupMenuListener() {
-      public void popupMenuCanceled(PopupMenuEvent popupMenuEvent) {
-        updateTargetNetworkBtn();
-      }
-      public void popupMenuWillBecomeInvisible(PopupMenuEvent popupMenuEvent) {
-        updateTargetNetworkBtn();
-      }
-      public void popupMenuWillBecomeVisible(PopupMenuEvent popupMenuEvent) {}
-    });
     targetNetworkBtn.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         networksMenu.show(targetNetworkBtn, 0, 0);
@@ -89,15 +81,27 @@ public class ImportNodeListDialog {
 
     filesTableModel = new FilesTableModel();
     table = new JTable(filesTableModel);
+
+    chooser = new JFileChooser();
+    chooser.setMultiSelectionEnabled(true);
+    chooser.setDialogTitle("Choose a node list file");
+
     final JButton addBtn = newSimpleBtn("+");
     addBtn.addActionListener(new AddFileAction());
-    final JButton rmBtn = newSimpleBtn("<html>&minus;</html>");
+
+    rmBtn = newSimpleBtn("<html>&minus;</html>");
+    rmBtn.setEnabled(false);
     rmBtn.addActionListener(new RemoveFileAction());
+    table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+      public void valueChanged(ListSelectionEvent e) {
+        rmBtn.setEnabled(true);
+      }
+    });
 
     final EasyGBC c = new EasyGBC();
 
     final JPanel targetNetworkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    targetNetworkPanel.add(new JLabel("Network: "));
+    targetNetworkPanel.add(new JLabel("Import node lists to: "));
     targetNetworkPanel.add(targetNetworkBtn);
 
     final JPanel filesBtnsPanel = new JPanel(new FlowLayout());
@@ -105,7 +109,7 @@ public class ImportNodeListDialog {
     filesBtnsPanel.add(rmBtn);
 
     final JPanel filesPanel = new JPanel(new GridBagLayout());
-    filesPanel.add(new JLabel("Files:"), c.reset().expandH());
+    filesPanel.add(new JLabel("Node list files:"), c.reset().expandH());
     filesPanel.add(filesBtnsPanel, c.right().noExpand());
     filesPanel.add(new JScrollPane(table), c.down().expandHV().spanH(2));
 
@@ -117,31 +121,32 @@ public class ImportNodeListDialog {
     dialog.setVisible(true);
   }
 
-  void updateTargetNetworkBtn() {
+  void setTargetNetwork(final CyNetwork targetNetwork) {
     final String netName = targetNetwork.getRow(targetNetwork).get(CyNetwork.NAME, String.class);
     final String displayName = netName == null ? "Untitled Network" : netName;
-    targetNetworkBtn.setText(displayName + " \u25bc");
+    targetNetworkBtn.setText(displayName + "  \u25bc");
   }
 
   class AddFileAction implements ActionListener {
     public void actionPerformed(ActionEvent e) {
-      final JFileChooser chooser = new JFileChooser();
-      chooser.setDialogTitle("Choose a node list file");
       final int choice = chooser.showOpenDialog(dialog);
       if (choice != JFileChooser.APPROVE_OPTION) {
         return;
       }
-      filesTableModel.addFile(chooser.getSelectedFile());
+      for (final File file : chooser.getSelectedFiles()) {
+        filesTableModel.addFile(file);
+      }
+      rmBtn.setEnabled(false);
     }
   }
 
   class RemoveFileAction implements ActionListener {
     public void actionPerformed(ActionEvent e) {
-      final int row = table.getSelectedRow();
-      if (row < 0) {
-        return;
+      final int[] rows = table.getSelectedRows();
+      for (int i = rows.length - 1; i >= 0; i--) { // loop backwards to prevent index out of bounds exception
+        filesTableModel.removeFile(rows[i]);
       }
-      filesTableModel.removeFile(row);
+      rmBtn.setEnabled(false);
     }
   }
 
@@ -169,7 +174,7 @@ public class ImportNodeListDialog {
 
   static String fileNameWithoutExtension(final String fullname) {
     final int index = fullname.indexOf('.');
-    if (index < 0) {
+    if (index <= 0) {
       return fullname;
     } else {
       return fullname.substring(0, index);
@@ -259,7 +264,7 @@ public class ImportNodeListDialog {
         final String subnetName = subnet.getRow(subnet).get(CyNetwork.NAME, String.class);
         menu.add(new AbstractAction("   " + (subnetName == null ? "Untitled Network" : subnetName)) {
           public void actionPerformed(ActionEvent e) {
-            targetNetwork = subnet;
+            setTargetNetwork(subnet);
           }
         });
       }
