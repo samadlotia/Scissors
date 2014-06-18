@@ -1,8 +1,17 @@
 package scissors.internal;
 
+import java.io.InputStream;
+
 import java.awt.Component;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.font.FontRenderContext;
+import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.FlowLayout;
+import java.awt.RenderingHints;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
@@ -54,7 +63,8 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
   public ScissorsPanel(final CyApplicationManager appMgr, final TaskManager taskMgr) {
     this.appMgr = appMgr;
     this.taskMgr = taskMgr;
-    icon = new ImageIcon(this.getClass().getResource("/icon.png"));
+    final IconCreator iconCreater = new IconCreator();
+    icon = iconCreater.newIcon(15.0f, "\uf0c4");
     attrComboBox = new JComboBox();
     valuesTable = new JTable(new ValuesTM());
     cutBtn = new JButton("Cut", icon);
@@ -160,8 +170,9 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
 
   private void updateValuesList(final CyTable tbl) {
     final Map<Object,Integer> values = new TreeMap<Object,Integer>();
-    if (attrComboBox.getSelectedItem() != null) {
-      final CyColumn col = ((CyColWrapper) attrComboBox.getSelectedItem()).getColumn();
+    final Object selected = attrComboBox.getSelectedItem();
+    if (selected != null && (selected instanceof CyColWrapper)) {
+      final CyColumn col = ((CyColWrapper) selected).getColumn();
       final String colName = col.getName();
       for (final CyRow row : tbl.getAllRows()) {
         final Object value = row.getRaw(colName);
@@ -280,6 +291,48 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
       final List<List<CyNode>> groups = groupOnDiscreteColumn(net, col.getName());
       final Task task = new ScissorsLayout(netView, groups);
       taskMgr.execute(new TaskIterator(task));
+    }
+  }
+}
+
+class IconCreator {
+  final Font font;
+  final FontRenderContext context;
+
+  public IconCreator() {
+    font = loadFont();
+    context = new FontRenderContext(null, true, true);
+  }
+
+  public ImageIcon newIcon(final float size, final String iconStr) {
+    if (font == null) {
+      return null;
+    }
+    final Font scaledFont = font.deriveFont(size);
+    final Rectangle2D bounds = scaledFont.getStringBounds(iconStr, context);
+    final int w = (int) Math.ceil(bounds.getWidth());
+    final int h = (int) Math.ceil(bounds.getHeight());
+    final BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+    final Graphics2D g2d = img.createGraphics();
+    g2d.setPaint(Color.BLACK);
+    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    g2d.setFont(scaledFont);
+    final float y = h - g2d.getFontMetrics(scaledFont).getLineMetrics(iconStr, g2d).getDescent();
+    g2d.drawString(iconStr, 0.0f, y);
+    return new ImageIcon(img);
+  }
+
+  static Font loadFont() {
+    InputStream contents = null;
+    try {
+      contents = IconCreator.class.getResourceAsStream("/scissors/fontawesome-webfont.ttf");
+      return Font.createFont(Font.TRUETYPE_FONT, contents);
+    } catch (Exception e) {
+      return null;
+    } finally {
+      try {
+        contents.close();
+      } catch (Exception e) {}
     }
   }
 }
