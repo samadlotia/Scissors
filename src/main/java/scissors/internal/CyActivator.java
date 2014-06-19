@@ -12,6 +12,7 @@ import org.cytoscape.work.ServiceProperties;
 import org.cytoscape.work.TaskFactory;
 import org.cytoscape.work.TaskManager;
 import org.cytoscape.work.swing.DialogTaskManager;
+import org.cytoscape.util.swing.FileUtil;
 
 public class CyActivator extends AbstractCyActivator {
   private static Properties ezProps(String... vals) {
@@ -26,7 +27,8 @@ public class CyActivator extends AbstractCyActivator {
     final CyApplicationManager appMgr = getService(bc, CyApplicationManager.class);
     final CySwingApplication swingApp = getService(bc, CySwingApplication.class);
     final TaskManager taskMgr = getService(bc, DialogTaskManager.class);
+    final FileUtil fileUtil = getService(bc, FileUtil.class);
 
-    super.registerAllServices(bc, new ScissorsPanel(appMgr, taskMgr), ezProps());
+    super.registerAllServices(bc, new ScissorsPanel(appMgr, swingApp, taskMgr, fileUtil), ezProps());
   }
 }
