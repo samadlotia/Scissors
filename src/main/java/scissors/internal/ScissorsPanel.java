@@ -81,12 +81,17 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     iconCreator = new IconCreator();
   }
 
-  private boolean areThereNodesSelected(final CyNetwork network) {
+  private boolean areThereNodesSelected() {
+    final CyNetwork network = appMgr.getCurrentNetwork();
     if (network == null) {
       return false;
     } else {
       return CyTableUtil.getNodesInState(network, "selected", true).size() > 0;
     }
+  }
+
+  private boolean isThereANetwork() {
+    return appMgr.getCurrentNetwork() != null;
   }
 
   private JButton newAddBtn(final NodeListsTableModel nodeListsModel) {
@@ -96,7 +101,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
         final File[] files = fileUtil.getFiles(swingApp.getJFrame(), "Choose Node Lists Files", FileUtil.LOAD, Arrays.asList(new FileChooserFilter("Text", ".txt")));
         for (final File file : files) {
           try {
-            nodeListsModel.addNodeList(NodeList.newFromFile(file), network);
+            nodeListsModel.addNodeList(NodeList.fromFile(file), network);
           } catch (Exception ex) {}
         }
       }
@@ -105,19 +110,25 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     final AbstractAction selectionAction = new AbstractAction("From Node Selection", iconCreator.newIcon(15.0f, IconCode.CIRCLE_O_NOTCH)) {
       public void actionPerformed(ActionEvent e) {
         final CyNetwork network = appMgr.getCurrentNetwork();
-        nodeListsModel.addNodeList(NodeList.newFromSelection(network), network);
+        nodeListsModel.addNodeList(NodeList.fromSelection(network), network);
+      }
+    };
+
+    final AbstractAction tableAction = new AbstractAction("From Discrete Node Table Columns", iconCreator.newIcon(15.0f, IconCode.TABLE)) {
+      public void actionPerformed(ActionEvent e) {
       }
     };
 
     final JPopupMenu menu = new JPopupMenu();
     menu.add(fileAction);
     menu.add(selectionAction);
+    menu.add(tableAction);
 
-    final JButton addBtn = new JButton(iconCreator.newIcon(15.0f, IconCode.PLUS_SQUARE));
+    final JButton addBtn = new JButton(iconCreator.newIcon(15.0f, IconCode.PLUS));
     addBtn.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
-        final boolean enableSelectionAction = areThereNodesSelected(appMgr.getCurrentNetwork());
-        selectionAction.setEnabled(enableSelectionAction);
+        selectionAction.setEnabled(areThereNodesSelected());
+        tableAction.setEnabled(isThereANetwork());
         menu.show(addBtn, 0, addBtn.getHeight());
       }
     });
@@ -129,19 +140,19 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     final JTable nodeListsTable = new JTable(nodeListsModel);
 
     final JButton addBtn = newAddBtn(nodeListsModel);
-    final JButton rmBtn = new JButton(iconCreator.newIcon(15.0f, IconCode.MINUS_SQUARE));
+    final JButton rmBtn = new JButton(iconCreator.newIcon(15.0f, IconCode.MINUS));
 
     final JButton runBtn = new JButton("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
 
     final EasyGBC c = new EasyGBC();
 
-    final JPanel nodeListsBtnsPanel = new JPanel(new FlowLayout());
+    final JPanel nodeListsBtnsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
     nodeListsBtnsPanel.add(addBtn);
     nodeListsBtnsPanel.add(rmBtn);
 
     final JPanel nodeListsPanel = new JPanel(new GridBagLayout());
-    nodeListsPanel.add(new JLabel("Node Lists:"), c.reset().expandH());
-    nodeListsPanel.add(nodeListsBtnsPanel, c.right());
+    nodeListsPanel.add(new JLabel("Node Lists:"), c.reset());
+    nodeListsPanel.add(nodeListsBtnsPanel, c.expandH().right());
     nodeListsPanel.add(new JScrollPane(nodeListsTable), c.down().spanH(2).expandHV());
 
     final JPanel btnsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -180,7 +191,7 @@ class NodeListsTableModel extends AbstractTableModel {
     if (network == null) {
       counts.add(0);
     } else {
-      final int count = nodeList.convertToNodes(network).size();
+      final int count = nodeList.getNodes(network).size();
       counts.add(count);
     }
 
@@ -198,7 +209,7 @@ class NodeListsTableModel extends AbstractTableModel {
       if (network == null) {
         counts.set(i, 0);
       } else {
-        final int count = nodeLists.get(i).convertToNodes(network).size();
+        final int count = nodeLists.get(i).getNodes(network).size();
         counts.set(i, count);
       }
       super.fireTableCellUpdated(i, 1);
@@ -253,8 +264,9 @@ class NodeListsTableModel extends AbstractTableModel {
 
 enum IconCode {
   SCISSORS("\uf0c4"),
-  PLUS_SQUARE("\uf0fe"),
-  MINUS_SQUARE("\uf146"),
+  PLUS("\uf067"),
+  MINUS("\uf068"),
+  TABLE("\uf0ce"),
   FILE_TEXT_O("\uf0f6"),
   CIRCLE_O_NOTCH("\uf1ce");
 
