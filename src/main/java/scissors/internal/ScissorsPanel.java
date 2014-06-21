@@ -116,6 +116,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
 
     final AbstractAction tableAction = new AbstractAction("From Discrete Node Table Columns", iconCreator.newIcon(15.0f, IconCode.TABLE)) {
       public void actionPerformed(ActionEvent e) {
+        new ColumnsDialog(swingApp.getJFrame());
       }
     };
 
