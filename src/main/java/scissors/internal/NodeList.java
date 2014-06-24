@@ -64,7 +64,7 @@ abstract class NodeList {
     return new NodeListFromDiscreteValueInColumns(name, cols, value);
   }
 
-  public static Set<?> getAllPossibleDiscreteValues(final CyTable tbl, final String[] cols) {
+  public static Set<Object> getAllPossibleDiscreteValues(final CyTable tbl, final String[] cols) {
     final Set<Object> values = new HashSet<Object>();
     final List<CyRow> rows = tbl.getAllRows();
     for (final String colName : cols) {
@@ -72,11 +72,17 @@ abstract class NodeList {
       if (col.getType().equals(List.class)) {
         final Class<?> elemType = col.getListElementType();
         for (final CyRow row : rows) {
+          if (!row.isSet(colName)) {
+            continue;
+          }
           final List<?> rowValues = row.getList(colName, elemType);
           values.addAll(rowValues);
         }
       } else {
         for (final CyRow row : rows) {
+          if (!row.isSet(colName)) {
+            continue;
+          }
           final Object rowValue = row.getRaw(colName);
           values.add(rowValue);
         }
@@ -157,14 +163,22 @@ class NodeListFromDiscreteValueInColumns extends NodeList {
       if (col.getType().equals(List.class)) {
         final Class<?> colListType = col.getListElementType();
         for (final CyNode node : network.getNodeList()) {
-          final List<?> list = tbl.getRow(node.getSUID()).getList(colName, colListType);
+          final CyRow row = tbl.getRow(node.getSUID());
+          if (!row.isSet(colName)) {
+            continue;
+          }
+          final List<?> list = row.getList(colName, colListType);
           if (list.contains(value)) {
             nodesInNetwork.add(node);
           }
         }
       } else {
         for (final CyNode node : network.getNodeList()) {
-          if (tbl.getRow(node.getSUID()).getRaw(colName).equals(value)) {
+          final CyRow row = tbl.getRow(node.getSUID());
+          if (!row.isSet(colName)) {
+            continue;
+          }
+          if (row.getRaw(colName).equals(value)) {
             nodesInNetwork.add(node);
           }
         }
