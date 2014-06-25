@@ -15,24 +15,24 @@ import org.cytoscape.work.TaskMonitor;
 
 class ScissorsLayout extends AbstractTask {
   final CyNetworkView netView;
-  final List<List<CyNode>> groups;
+  final List<Partition> partitions;
 
-  public ScissorsLayout(final CyNetworkView netView, final List<List<CyNode>> groups) {
+  public ScissorsLayout(final CyNetworkView netView, final List<Partition> partitions) {
     this.netView = netView;
-    this.groups = groups;
+    this.partitions = partitions;
   }
 
   static final double GROUP_X_SPACE = 150.0;
   static final double GROUP_Y_SPACE = 150.0;
 
   public void run(final TaskMonitor monitor) {
-    final int cols = numOfCols(groups.size());
+    final int cols = numOfCols(partitions.size());
     final Point2D.Double pos = new Point2D.Double(0.0, 0.0);
-    final Rectangle2D.Double groupSize = new Rectangle2D.Double();
+    final Rectangle2D.Double partitionSize = new Rectangle2D.Double();
     double maxH = 0.0;
     int col = 0;
-    for (final List<CyNode> group : groups) {
-      layoutGroup(group, pos, groupSize);
+    for (final Partition partition : partitions) {
+      layoutPartition(partition, pos, partitionSize);
 
       col++;
       if (col >= cols) {
@@ -41,8 +41,8 @@ class ScissorsLayout extends AbstractTask {
         maxH = 0.0;
         col = 0;
       } else {
-        pos.x += GROUP_X_SPACE + groupSize.width;
-        maxH = Math.max(maxH, groupSize.height);
+        pos.x += GROUP_X_SPACE + partitionSize.width;
+        maxH = Math.max(maxH, partitionSize.height);
       }
     }
 
@@ -53,17 +53,17 @@ class ScissorsLayout extends AbstractTask {
   static final double NODE_X_SPACE = 10.0;
   static final double NODE_Y_SPACE = 10.0;
 
-  private void layoutGroup(final List<CyNode> group, final Point2D.Double startPt, final Rectangle2D.Double groupSize) {
+  private void layoutPartition(final Partition partition, final Point2D.Double startPt, final Rectangle2D.Double partitionSize) {
     double maxRowH = 0.0;
     double maxX = 0.0;
     double x = startPt.x;
     double y = startPt.y;
-    final int cols = numOfCols(group.size());
+    final int cols = numOfCols(partition.getNodes().size());
     int col = 0;
 
 
     //System.out.println("---------------");
-    for (final CyNode node : group) {
+    for (final CyNode node : partition.getNodes()) {
       //System.out.println(String.format("%s: %d of %d - %f,%f", netView.getModel().getRow(node).get("name", String.class), col, cols, x, y));
       final View<CyNode> view = netView.getNodeView(node);
       view.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
@@ -84,7 +84,7 @@ class ScissorsLayout extends AbstractTask {
         maxRowH = Math.max(maxRowH, h);
       }
     }
-    groupSize.setRect(startPt.x, startPt.y, maxX, y);
+    partitionSize.setRect(startPt.x, startPt.y, maxX, y);
   }
 
   static int numOfCols(final int n) {

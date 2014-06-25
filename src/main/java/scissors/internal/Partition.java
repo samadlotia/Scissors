@@ -55,7 +55,7 @@ class Partition {
 
   private static String generatePartitionName(final BitSet membership, final List<NodeList> nodeLists, final StringBuffer nameBuffer) {
     if (membership.isEmpty()) {
-      return "None of the above";
+      return "None";
     } else {
       nameBuffer.setLength(0); // clear the name buffer before using it
       for (int i = membership.nextSetBit(0); i >= 0; i = membership.nextSetBit(i+1)) { // loop thru each set bit in membership
