@@ -221,6 +221,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     });
 
     final JButton runBtn = new JButton("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
+    runBtn.addActionListener(new RunLayout());
 
     final EasyGBC c = new EasyGBC();
 
@@ -263,6 +264,14 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     final CyNetwork network = appMgr.getCurrentNetwork();
     nodeListsModel.updateCountsForNetwork(network);
     updatePartitionsTable(network);
+  }
+
+  class RunLayout implements ActionListener {
+    public void actionPerformed(ActionEvent e) {
+      final CyNetworkView view = appMgr.getCurrentNetworkView();
+      final List<Partition> partitions = partitionsModel.getPartitions();
+      taskMgr.execute(new TaskIterator(new ScissorsLayout(view, partitions)));
+    }
   }
 }
 
@@ -362,6 +371,10 @@ class NodeListsTableModel extends AbstractTableModel {
 
 class PartitionsTableModel extends AbstractTableModel {
   List<Partition> partitions = Collections.emptyList();
+
+  public List<Partition> getPartitions() {
+    return partitions;
+  }
 
   public void setPartitions(final List<Partition> partitions) {
     this.partitions = partitions;
