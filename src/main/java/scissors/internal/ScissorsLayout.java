@@ -84,7 +84,7 @@ class ScissorsLayout extends AbstractTask {
         maxRowH = Math.max(maxRowH, h);
       }
     }
-    partitionSize.setRect(startPt.x, startPt.y, maxX, y);
+    partitionSize.setRect(startPt.x, startPt.y, maxX - startPt.x, y - startPt.y);
   }
 
   static int numOfCols(final int n) {
