@@ -174,6 +174,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     });
 
     final JButton runBtn = new JButton(new RunLayoutAction());
+    final JButton refreshBtn = new JButton(new RefreshAction());
 
     final EasyGBC c = new EasyGBC();
 
@@ -190,13 +191,17 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     partitionsPanel.add(new JLabel("Partitions:"), c.reset().expandH().insets(15, 5, 0, 0));
     partitionsPanel.add(new JScrollPane(partitionsTable), c.down().expandHV().noInsets());
 
-    final JPanel btnsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-    btnsPanel.add(runBtn);
+    final JPanel secondaryBtnsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    secondaryBtnsPanel.add(refreshBtn);
+
+    final JPanel mainBtnsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    mainBtnsPanel.add(runBtn);
 
     final JPanel mainPanel = new JPanel(new GridBagLayout());
-    mainPanel.add(nodeListsPanel, c.reset().expandHV());
-    mainPanel.add(partitionsPanel, c.down());
-    mainPanel.add(btnsPanel, c.down().expandH());
+    mainPanel.add(nodeListsPanel, c.reset().expandHV().spanH(2));
+    mainPanel.add(partitionsPanel, c.down().spanH(2));
+    mainPanel.add(secondaryBtnsPanel, c.noSpan().down().expandH());
+    mainPanel.add(mainBtnsPanel, c.right().expandH());
     return mainPanel;
   }
 
@@ -213,6 +218,10 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
   }
 
   public void handleEvent(SetCurrentNetworkViewEvent e) {
+    refresh();
+  }
+
+  private void refresh() {
     final CyNetwork network = appMgr.getCurrentNetwork();
     nodeListsModel.updateCountsForNetwork(network);
     updatePartitionsTable(network);
@@ -285,6 +294,16 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
         nodeListsModel.removeNodeList(rows[i]);
       }
       updatePartitionsTable(appMgr.getCurrentNetwork());
+    }
+  }
+
+  class RefreshAction extends AbstractAction {
+    public RefreshAction() {
+      super("Refresh", iconCreator.newIcon(15.0f, IconCode.REFRESH));
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      refresh();
     }
   }
 
@@ -463,6 +482,7 @@ enum IconCode {
   MINUS("\uf068"),
   TABLE("\uf0ce"),
   FILE_TEXT_O("\uf0f6"),
+  REFRESH("\uf021"),
   CIRCLE_O_NOTCH("\uf1ce");
 
   final String iconStr;
