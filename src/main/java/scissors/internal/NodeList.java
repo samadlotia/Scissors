@@ -158,7 +158,7 @@ class NodeListFromDiscreteValueInColumns extends NodeList {
     for (final String colName : cols) {
       final CyColumn col = tbl.getColumn(colName);
       if (col == null) {
-        continue; // column doesn't exist for this node table or isn't scalar; skip it
+        continue; // column doesn't exist for this node table; skip it
       }
       if (col.getType().equals(List.class)) {
         final Class<?> colListType = col.getListElementType();
