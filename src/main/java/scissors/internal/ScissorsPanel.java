@@ -104,50 +104,12 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
   }
 
   private JButton newAddBtn() {
-    final AbstractAction tableAction = new AbstractAction("From Discrete Node Table Columns", iconCreator.newIcon(17.0f, IconCode.TABLE)) {
-      public void actionPerformed(ActionEvent e) {
-        final CyNetwork network = appMgr.getCurrentNetwork();
-        new ColumnsDialog(swingApp.getJFrame(), network.getDefaultNodeTable(), new ColumnsDialog.OkListener() {
-          public void invoked(final List<NodeList> nodeLists) {
-            for (final NodeList nodeList : nodeLists) {
-              nodeListsModel.addNodeList(nodeList, network);
-            }
-            updatePartitionsTable(network);
-          }
-        });
-      }
-    };
-
-    final AbstractAction selectionAction = new AbstractAction("From Node Selection", iconCreator.newIcon(17.0f, IconCode.CIRCLE_O_NOTCH)) {
-      public void actionPerformed(ActionEvent e) {
-        final CyNetwork network = appMgr.getCurrentNetwork();
-        nodeListsModel.addNodeList(NodeList.fromSelection(network), network);
-        updatePartitionsTable(network);
-      }
-    };
-
-    final AbstractAction fileAction = new AbstractAction("From File", iconCreator.newIcon(17.0f, IconCode.FILE_TEXT_O)) {
-      final JFileChooser chooser = new JFileChooser();
-      public void actionPerformed(ActionEvent e) {
-        final CyNetwork network = appMgr.getCurrentNetwork();
-        chooser.setMultiSelectionEnabled(true);
-        chooser.setDialogTitle("Choose Node Lists Files");
-        final int choice = chooser.showOpenDialog(swingApp.getJFrame());
-        if (choice != JFileChooser.APPROVE_OPTION) {
-          return;
-        }
-        final File[] files = chooser.getSelectedFiles();
-        for (final File file : files) {
-          try {
-            nodeListsModel.addNodeList(NodeList.fromFile(file), network);
-          } catch (Exception ex) {}
-        }
-        updatePartitionsTable(network);
-      }
-    };
+    final AbstractAction tableAction = new AddNodeListsFromDiscreteValuesAction();
+    final AbstractAction selectionAction = new AddNodeListFromSelectionAction();
+    final AbstractAction fileAction = new AddNodeListFromFileAction();
 
     final JPopupMenu menu = new JPopupMenu();
-    menu.add(tableAction);
+    menu.add(new AddNodeListsFromDiscreteValuesAction());
     menu.add(selectionAction);
     menu.add(fileAction);
 
@@ -167,17 +129,8 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     final JTable partitionsTable = new JTable(partitionsModel);
 
     final JButton addBtn = newAddBtn();
-    final JButton rmBtn = new JButton(iconCreator.newIcon(15.0f, IconCode.MINUS));
+    final JButton rmBtn = new JButton(new RemoveNodeListsAction(nodeListsTable));
     rmBtn.setEnabled(false);
-    rmBtn.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        final int[] rows = nodeListsTable.getSelectedRows();
-        for (int i = rows.length - 1; i >= 0; i--) {
-          nodeListsModel.removeNodeList(rows[i]);
-        }
-        updatePartitionsTable(appMgr.getCurrentNetwork());
-      }
-    });
 
     nodeListsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
       public void valueChanged(ListSelectionEvent e) {
@@ -220,8 +173,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
       }
     });
 
-    final JButton runBtn = new JButton("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
-    runBtn.addActionListener(new RunLayout());
+    final JButton runBtn = new JButton(new RunLayoutAction());
 
     final EasyGBC c = new EasyGBC();
 
@@ -266,7 +218,81 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     updatePartitionsTable(network);
   }
 
-  class RunLayout implements ActionListener {
+  class AddNodeListsFromDiscreteValuesAction extends AbstractAction {
+    public AddNodeListsFromDiscreteValuesAction() {
+      super("From Discrete Node Table Columns", iconCreator.newIcon(17.0f, IconCode.TABLE));
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final CyNetwork network = appMgr.getCurrentNetwork();
+      new ColumnsDialog(swingApp.getJFrame(), network.getDefaultNodeTable(), new ColumnsDialog.OkListener() {
+        public void invoked(final List<NodeList> nodeLists) {
+          for (final NodeList nodeList : nodeLists) {
+            nodeListsModel.addNodeList(nodeList, network);
+          }
+          updatePartitionsTable(network);
+        }
+      });
+    }
+  }
+
+  class AddNodeListFromSelectionAction extends AbstractAction {
+    public AddNodeListFromSelectionAction() {
+      super("From Node Selection", iconCreator.newIcon(17.0f, IconCode.CIRCLE_O_NOTCH));
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final CyNetwork network = appMgr.getCurrentNetwork();
+      nodeListsModel.addNodeList(NodeList.fromSelection(network), network);
+      updatePartitionsTable(network);
+    }
+  }
+
+  class AddNodeListFromFileAction extends AbstractAction {
+    final JFileChooser chooser = new JFileChooser();
+    public AddNodeListFromFileAction() {
+      super("From File", iconCreator.newIcon(17.0f, IconCode.FILE_TEXT_O));
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final CyNetwork network = appMgr.getCurrentNetwork();
+      chooser.setMultiSelectionEnabled(true);
+      chooser.setDialogTitle("Choose Node Lists Files");
+      final int choice = chooser.showOpenDialog(swingApp.getJFrame());
+      if (choice != JFileChooser.APPROVE_OPTION) {
+        return;
+      }
+      final File[] files = chooser.getSelectedFiles();
+      for (final File file : files) {
+        try {
+          nodeListsModel.addNodeList(NodeList.fromFile(file), network);
+        } catch (Exception ex) {}
+      }
+      updatePartitionsTable(network);
+    }
+  }
+
+  class RemoveNodeListsAction extends AbstractAction {
+    final JTable nodeListsTable;
+    public RemoveNodeListsAction(final JTable nodeListsTable) {
+      super(null, iconCreator.newIcon(15.0f, IconCode.MINUS));
+      this.nodeListsTable = nodeListsTable;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final int[] rows = nodeListsTable.getSelectedRows();
+      for (int i = rows.length - 1; i >= 0; i--) {
+        nodeListsModel.removeNodeList(rows[i]);
+      }
+      updatePartitionsTable(appMgr.getCurrentNetwork());
+    }
+  }
+
+  class RunLayoutAction extends AbstractAction {
+    public RunLayoutAction() {
+      super("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
+    }
+    
     public void actionPerformed(ActionEvent e) {
       final CyNetworkView view = appMgr.getCurrentNetworkView();
       final List<Partition> partitions = partitionsModel.getPartitions();
