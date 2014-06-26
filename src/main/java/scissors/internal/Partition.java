@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
+import org.cytoscape.model.CyTable;
+import org.cytoscape.model.CyColumn;
 
 class Partition {
   String name;
@@ -96,6 +98,34 @@ class Partition {
     }
 
     return partitions;
+  }
+
+  public static String storePartitionsInNodeColumn(final List<Partition> partitions, final CyNetwork network, final String suggestedColName) {
+    final CyTable table = network.getDefaultNodeTable();
+    String colName = suggestedColName;
+    int counter = 0;
+    while (table.getColumn(colName) != null && !table.getColumn(colName).getType().equals(String.class)) {
+      colName = suggestedColName + " " + (++counter);
+    }
+    if (table.getColumn(colName) == null) {
+      table.createColumn(colName, String.class, false);
+    }
+    storePartitionsInColumn(partitions, table, colName);
+    return colName;
+  }
+
+  public static void storePartitionsInColumn(final List<Partition> partitions, final CyTable table, final String colName) {
+    final CyColumn col = table.getColumn(colName);
+    if (col == null || !String.class.equals(col.getType())) {
+      throw new IllegalArgumentException(String.format("Column '%s' does not exist or is not a string", colName));
+    }
+
+    for (final Partition partition : partitions) {
+      final String value = partition.getName();
+      for (final CyNode node : partition.getNodes()) {
+        table.getRow(node.getSUID()).set(colName, value);
+      }
+    }
   }
 }
 

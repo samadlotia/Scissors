@@ -152,6 +152,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     });
 
     final JButton runBtn = new JButton(new RunLayoutAction());
+    final JButton storeToColumnBtn = new JButton(new StoreToColumnAction());
     final JButton refreshBtn = new JButton(new RefreshAction());
 
     final EasyGBC c = new EasyGBC();
@@ -173,6 +174,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     secondaryBtnsPanel.add(refreshBtn);
 
     final JPanel mainBtnsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    mainBtnsPanel.add(storeToColumnBtn);
     mainBtnsPanel.add(runBtn);
 
     final JPanel mainPanel = new JPanel(new GridBagLayout());
@@ -294,6 +296,18 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
       final CyNetworkView view = appMgr.getCurrentNetworkView();
       final List<Partition> partitions = partitionsModel.getPartitions();
       taskMgr.execute(new TaskIterator(new ScissorsLayout(view, partitions)));
+    }
+  }
+
+  class StoreToColumnAction extends AbstractAction {
+    public StoreToColumnAction() {
+      super("Store to column", iconCreator.newIcon(15.0f, IconCode.SIGN_IN));
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      final CyNetwork network = appMgr.getCurrentNetwork();
+      final List<Partition> partitions = partitionsModel.getPartitions();
+      Partition.storePartitionsInNodeColumn(partitions, network, "Partition");
     }
   }
 }
@@ -477,6 +491,7 @@ enum IconCode {
   TABLE("\uf0ce"),
   FILE_TEXT_O("\uf0f6"),
   REFRESH("\uf021"),
+  SIGN_IN("\uf090"),
   CIRCLE_O_NOTCH("\uf1ce");
 
   final String iconStr;
