@@ -136,40 +136,18 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
       public void valueChanged(ListSelectionEvent e) {
         final boolean areRowsSelected = nodeListsTable.getSelectedRowCount() > 0;
         rmBtn.setEnabled(areRowsSelected);
-        if (!areRowsSelected) {
-          return;
+        if (areRowsSelected) {
+          nodeListsModel.selectNodesInNetwork(nodeListsTable.getSelectedRows(), appMgr.getCurrentNetworkView());
         }
-        final CyNetwork network = appMgr.getCurrentNetwork();
-        final CyTable tbl = network.getDefaultNodeTable();
-        final Set<CyNode> nodesToSelect = new HashSet<CyNode>();
-        for (final int index : nodeListsTable.getSelectedRows()) {
-          nodesToSelect.addAll(nodeListsModel.getNodeListAt(index).getNodes(network));
-        }
-        for (final CyNode node : network.getNodeList()) {
-          final boolean doSelect = nodesToSelect.contains(node);
-          tbl.getRow(node.getSUID()).set(CyNetwork.SELECTED, doSelect);
-        }
-        appMgr.getCurrentNetworkView().updateView();
       }
     });
 
     partitionsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
       public void valueChanged(ListSelectionEvent e) {
         final boolean areRowsSelected = partitionsTable.getSelectedRowCount() > 0;
-        if (!areRowsSelected) {
-          return;
+        if (areRowsSelected) {
+          partitionsModel.selectNodesInNetwork(partitionsTable.getSelectedRows(), appMgr.getCurrentNetworkView());
         }
-        final CyNetwork network = appMgr.getCurrentNetwork();
-        final CyTable tbl = network.getDefaultNodeTable();
-        final Set<CyNode> nodesToSelect = new HashSet<CyNode>();
-        for (final int index : partitionsTable.getSelectedRows()) {
-          nodesToSelect.addAll(partitionsModel.getPartitionAt(index).getNodes());
-        }
-        for (final CyNode node : network.getNodeList()) {
-          final boolean doSelect = nodesToSelect.contains(node);
-          tbl.getRow(node.getSUID()).set(CyNetwork.SELECTED, doSelect);
-        }
-        appMgr.getCurrentNetworkView().updateView();
       }
     });
 
@@ -311,7 +289,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     public RunLayoutAction() {
       super("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
     }
-    
+
     public void actionPerformed(ActionEvent e) {
       final CyNetworkView view = appMgr.getCurrentNetworkView();
       final List<Partition> partitions = partitionsModel.getPartitions();
@@ -370,14 +348,6 @@ class NodeListsTableModel extends AbstractTableModel {
     return nodeLists.size();
   }
 
-  public int size() {
-    return nodeLists.size();
-  }
-
-  public NodeList getNodeListAt(final int index) {
-    return nodeLists.get(index);
-  }
-
   public List<NodeList> getNodeLists() {
     return nodeLists;
   }
@@ -412,6 +382,20 @@ class NodeListsTableModel extends AbstractTableModel {
     }
     nodeLists.get(row).setName(val.toString());
   }
+
+  public void selectNodesInNetwork(final int[] rows, final CyNetworkView view) {
+    final CyNetwork network = view.getModel();
+    final CyTable tbl = network.getDefaultNodeTable();
+    final Set<CyNode> nodesToSelect = new HashSet<CyNode>();
+    for (final int index : rows) {
+      nodesToSelect.addAll(nodeLists.get(index).getNodes(network));
+    }
+    for (final CyNode node : network.getNodeList()) {
+      final boolean doSelect = nodesToSelect.contains(node);
+      tbl.getRow(node.getSUID()).set(CyNetwork.SELECTED, doSelect);
+    }
+    view.updateView();
+  }
 }
 
 class PartitionsTableModel extends AbstractTableModel {
@@ -438,10 +422,6 @@ class PartitionsTableModel extends AbstractTableModel {
 
   public int getRowCount() {
     return partitions.size();
-  }
-
-  public Partition getPartitionAt(final int index) {
-    return partitions.get(index);
   }
 
   public int getColumnCount() {
@@ -473,6 +453,20 @@ class PartitionsTableModel extends AbstractTableModel {
       return;
     }
     partitions.get(row).setName(val.toString());
+  }
+
+  public void selectNodesInNetwork(final int[] rows, final CyNetworkView view) {
+    final CyNetwork network = view.getModel();
+    final CyTable tbl = network.getDefaultNodeTable();
+    final Set<CyNode> nodesToSelect = new HashSet<CyNode>();
+    for (final int index : rows) {
+      nodesToSelect.addAll(partitions.get(index).getNodes());
+    }
+    for (final CyNode node : network.getNodeList()) {
+      final boolean doSelect = nodesToSelect.contains(node);
+      tbl.getRow(node.getSUID()).set(CyNetwork.SELECTED, doSelect);
+    }
+    view.updateView();
   }
 }
 
