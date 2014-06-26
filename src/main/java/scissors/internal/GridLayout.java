@@ -13,11 +13,11 @@ import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.cytoscape.work.AbstractTask;
 import org.cytoscape.work.TaskMonitor;
 
-class ScissorsLayout extends AbstractTask {
+class GridLayout extends AbstractTask {
   final CyNetworkView netView;
   final List<Partition> partitions;
 
-  public ScissorsLayout(final CyNetworkView netView, final List<Partition> partitions) {
+  public GridLayout(final CyNetworkView netView, final List<Partition> partitions) {
     this.netView = netView;
     this.partitions = partitions;
   }

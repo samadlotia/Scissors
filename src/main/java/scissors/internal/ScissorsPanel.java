@@ -295,7 +295,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     public void actionPerformed(ActionEvent e) {
       final CyNetworkView view = appMgr.getCurrentNetworkView();
       final List<Partition> partitions = partitionsModel.getPartitions();
-      taskMgr.execute(new TaskIterator(new ScissorsLayout(view, partitions)));
+      taskMgr.execute(new TaskIterator(new GridLayout(view, partitions)));
     }
   }
 
