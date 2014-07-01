@@ -1,11 +1,15 @@
 package scissors.internal;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
 
 import  java.awt.geom.Point2D;
 import  java.awt.geom.Rectangle2D;
 
 import org.cytoscape.model.CyNetwork;
+import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNode;
 import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.view.model.View;
@@ -14,10 +18,26 @@ import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.cytoscape.work.AbstractTask;
 import org.cytoscape.work.TaskMonitor;
 
-class ForceDirectedLayout extends AbstractTask {
-  final int iterations = 100;
+import prefuse.util.force.DragForce;
+import prefuse.util.force.ForceItem;
+import prefuse.util.force.ForceSimulator;
+import prefuse.util.force.NBodyForce;
+import prefuse.util.force.SpringForce;
+
+import org.cytoscape.work.Tunable;
+
+public class ForceDirectedLayout extends AbstractTask {
+  static final float DEFAULT_NODE_MASS = 3.0f;
+  static final float DEFAULT_SPRING_COEFF = 1e-4f;
+  static final float DEFAULT_SPRING_LENGTH = 50.0f;
+  static final int DEFAULT_ITERS = 100;
   final CyNetworkView netView;
   final List<Partition> partitions;
+
+  //@Tunable
+  public double springCoeff = 1e-7;
+  //@Tunable
+  public double springLength = 300.0;
 
   public ForceDirectedLayout(final CyNetworkView netView, final List<Partition> partitions) {
     this.netView = netView;
@@ -25,70 +45,70 @@ class ForceDirectedLayout extends AbstractTask {
   }
 
   public void run(final TaskMonitor monitor) {
+    final ForceSimulator sim = new ForceSimulator();
+    sim.addForce(new NBodyForce());
+    sim.addForce(new SpringForce());
+    sim.addForce(new DragForce());
+
     final CyNetwork network = netView.getModel();
+
+    // create force items for each node
     final List<CyNode> nodes = network.getNodeList();
-    final int n = nodes.size();
-    final int[] membership = new int[n];
-    for (int nodei = 0; nodei < n; nodei++) {
-      final CyNode node = nodes.get(nodei);
-      for (int parti = 0; parti < partitions.size(); parti++) {
-        final Partition partition = partitions.get(parti);
-        if (partition.getNodes().contains(node)) {
-          membership[nodei] = parti;
-          break;
+    final Map<CyNode,ForceItem> items = new HashMap<CyNode,ForceItem>();
+    for (final CyNode node : nodes) {
+      final ForceItem item = new ForceItem();
+      item.mass = DEFAULT_NODE_MASS;
+      item.location[0] = 0f;
+      item.location[1] = 0f;
+      sim.addItem(item);
+      items.put(node, item);
+    }
+
+    // create springs for each edge
+    for (final CyEdge edge : network.getEdgeList()) {
+      final CyNode src = edge.getSource();
+      final CyNode trg = edge.getTarget();
+      final ForceItem srcItem = items.get(src);
+      final ForceItem trgItem = items.get(trg);
+      if (srcItem == null || trgItem == null) {
+        continue;
+      }
+      sim.addSpring(srcItem, trgItem, DEFAULT_SPRING_COEFF, DEFAULT_SPRING_LENGTH);
+    }
+
+    // create springs between all intra-group nodes
+    for (final Partition partition : partitions) {
+      final Set<CyNode> partitionNodes = partition.getNodes();
+      for (final CyNode src : partitionNodes) {
+        final ForceItem srcItem = items.get(src);
+        for (final CyNode trg : partitionNodes) {
+          final ForceItem trgItem = items.get(trg);
+          sim.addSpring(srcItem, trgItem, (float) springCoeff, (float) springLength);
         }
       }
     }
 
-    final double[] xs = new double[n];
-    final double[] ys = new double[n];
-    for (int nodei = 0; nodei < n; nodei++) {
-      final CyNode node = nodes.get(nodei);
-      final View<CyNode> nodeView = netView.getNodeView(node);
-      xs[nodei] = nodeView.getVisualProperty(BasicVisualLexicon.NODE_X_LOCATION);
-      ys[nodei] = nodeView.getVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION);
+    // run force simulation
+    final int iters = DEFAULT_ITERS;
+    long timestep = 1000L;
+    for (int i = 0; i < iters && !cancelled; i++) {
+      timestep *= (1.0 - i/(double)iters);
+      long step = timestep+50;
+      sim.runSimulator(step);
+      monitor.setProgress(i / ((double) iters));
     }
 
-    final double[] x2s = new double[n];
-    final double[] y2s = new double[n];
-
-    for (int trgi = 0; trgi < n; trgi++) {
-      final int trgMembership = membership[trgi];
-      final double trgx = xs[trgi];
-      final double trgy = ys[trgi];
-      double trg2x = trgx;
-      double trg2y = trgy;
-      for (int srci = 0; srci < n; srci++) {
-        final double srcx = xs[srci];
-        final double srcy = ys[srci];
-        final double deltax = trgx - srcx;
-        final double deltay = trgy - srcy;
-        final boolean isConnected = network.containsEdge(nodes.get(trgi), nodes.get(srci));
-        if (isConnected) {
-          trg2x -= 0.004 * deltax;
-          trg2y -= 0.004 * deltay;
-        } else {
-          final boolean inSamePartition = trgMembership == membership[srci];
-          if (inSamePartition) {
-            trg2x -= 0.002 * deltax;
-            trg2y -= 0.002 * deltay;
-          } else {
-            trg2x += 0.002 * deltax;
-            trg2y += 0.002 * deltay;
-          }
-        }
-      }
-      x2s[trgi] = trg2x;
-      y2s[trgi] = trg2y;
-    }
-    System.arraycopy(x2s, 0, xs, 0, n);
-    System.arraycopy(y2s, 0, ys, 0, n);
-    for (int nodei = 0; nodei < n; nodei++) {
-      final CyNode node = nodes.get(nodei);
+    // update node locations
+    for (final CyNode node : nodes) {
+      final ForceItem item = items.get(node);
+      final double x = item.location[0];
+      final double y = item.location[1];
       final View<CyNode> nodeView = netView.getNodeView(node);
-      nodeView.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, xs[nodei]);
-      nodeView.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, ys[nodei]);
+      nodeView.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
+      nodeView.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
     }
+
+    netView.fitContent();
     netView.updateView();
   }
 }

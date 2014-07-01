@@ -5,6 +5,7 @@ import java.io.File;
 
 import java.awt.Component;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.Graphics2D;
@@ -18,6 +19,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import java.util.Map;
 import java.util.TreeMap;
@@ -29,6 +32,8 @@ import java.util.Set;
 import java.util.HashSet;
 
 import javax.swing.AbstractAction;
+import javax.swing.BoxLayout;
+import javax.swing.Box;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -37,7 +42,9 @@ import javax.swing.JTable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JFileChooser;
 import javax.swing.table.AbstractTableModel;
 
@@ -65,6 +72,11 @@ import org.cytoscape.work.TaskIterator;
 import org.cytoscape.work.TaskManager;
 
 class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener {
+  enum Layout {
+    GRID,
+    FORCE_DIRECTED
+  }
+
   final CyApplicationManager appMgr;
   final CySwingApplication swingApp;
   final TaskManager taskMgr;
@@ -72,6 +84,8 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
   final IconCreator iconCreator;
   final NodeListsTableModel nodeListsModel;
   final PartitionsTableModel partitionsModel;
+
+  Layout selectedLayout = Layout.GRID;
 
   public ScissorsPanel(
       final CyApplicationManager appMgr,
@@ -124,6 +138,41 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
     return addBtn;
   }
 
+  private JButton newRunButton() {
+    final Icon checkedIcon = iconCreator.newIcon(15.0f, IconCode.CHECK);
+    final ActionListener runLayoutAction = new RunLayoutAction();
+    final JMenuItem gridLayoutMenuItem = new JMenuItem("Grid Layout", (selectedLayout == Layout.GRID ? checkedIcon : null));
+    final JMenuItem forceDirectedLayoutMenuItem = new JMenuItem("Force Directed Layout");
+    gridLayoutMenuItem.addActionListener(new AbstractAction() {
+      public void actionPerformed(ActionEvent e) {
+        gridLayoutMenuItem.setIcon(checkedIcon);
+        forceDirectedLayoutMenuItem.setIcon(null);
+        selectedLayout = Layout.GRID;
+        runLayoutAction.actionPerformed(e);
+      }
+    });
+    forceDirectedLayoutMenuItem.addActionListener(new AbstractAction() {
+      public void actionPerformed(ActionEvent e) {
+        gridLayoutMenuItem.setIcon(null);
+        forceDirectedLayoutMenuItem.setIcon(checkedIcon);
+        selectedLayout = Layout.FORCE_DIRECTED;
+        runLayoutAction.actionPerformed(e);
+      }
+    });
+    //final JMenuItem layoutOptionsMenuItem = new JMenuItem("Options...");
+    final JPopupMenu layoutsMenu = new JPopupMenu();
+    layoutsMenu.add(gridLayoutMenuItem);
+    layoutsMenu.add(forceDirectedLayoutMenuItem);
+    //layoutsMenu.addSeparator();
+    //layoutsMenu.add(layoutOptionsMenuItem);
+
+    //final JButton runBtn = new JButton(new RunLayoutAction());
+    final SplitButton runBtn = new SplitButton("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS), iconCreator.newIcon(10.0f, IconCode.CHEVRON_DOWN));
+    runBtn.addActionListener(new RunLayoutAction());
+    runBtn.setMenu(layoutsMenu);
+    return runBtn;
+  }
+
   public Component getComponent() {
     final JTable nodeListsTable = new JTable(nodeListsModel);
     final JTable partitionsTable = new JTable(partitionsModel);
@@ -151,7 +200,7 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
       }
     });
 
-    final JButton runBtn = new JButton(new RunLayoutAction());
+    final JButton runBtn = newRunButton();
     final JButton storeToColumnBtn = new JButton(new StoreToColumnAction());
     final JButton refreshBtn = new JButton(new RefreshAction());
 
@@ -288,15 +337,17 @@ class ScissorsPanel implements CytoPanelComponent, SetCurrentNetworkViewListener
   }
 
   class RunLayoutAction extends AbstractAction {
-    public RunLayoutAction() {
-      super("Cut", iconCreator.newIcon(15.0f, IconCode.SCISSORS));
-    }
-
     public void actionPerformed(ActionEvent e) {
       final CyNetworkView view = appMgr.getCurrentNetworkView();
       final List<Partition> partitions = partitionsModel.getPartitions();
-      //taskMgr.execute(new TaskIterator(new GridLayout(view, partitions)));
-      taskMgr.execute(new TaskIterator(new ForceDirectedLayout(view, partitions)));
+      switch (selectedLayout) {
+      case GRID:
+        taskMgr.execute(new TaskIterator(new GridLayout(view, partitions)));
+        break;
+      case FORCE_DIRECTED:
+        taskMgr.execute(new TaskIterator(new ForceDirectedLayout(view, partitions)));
+        break;
+      }
     }
   }
 
@@ -485,6 +536,55 @@ class PartitionsTableModel extends AbstractTableModel {
   }
 }
 
+class SplitButton extends JButton {
+  static final int GAP = 5;
+  final JLabel mainText;
+  volatile boolean actionListenersEnabled = true;
+  JPopupMenu menu = null;
+
+  public SplitButton(final String text, final Icon btnIcon, final Icon menuIcon) {
+    mainText = new JLabel(text, btnIcon, JLabel.LEFT);
+    final JLabel menuLabel = new JLabel(menuIcon);
+    super.setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+    super.add(mainText);
+    super.add(Box.createRigidArea(new Dimension(GAP, 0)));
+    super.add(new JSeparator(JSeparator.VERTICAL));
+    super.add(Box.createRigidArea(new Dimension(GAP, 0)));
+    super.add(menuLabel);
+
+    super.addMouseListener(new MouseAdapter() {
+      public void mousePressed(final MouseEvent e) {
+        if (!SplitButton.this.isEnabled())
+          return;
+        final int x = e.getX();
+        final int w = e.getComponent().getWidth();
+        if (x >= (2 * w / 3)) {
+          actionListenersEnabled = false;
+          if (menu != null) {
+            menu.show(e.getComponent(), e.getX(), e.getY());
+          }
+        } else {
+          actionListenersEnabled = true;
+        }
+      }
+    });
+  }
+
+  public void setText(final String label) {
+    mainText.setText(label);
+  }
+
+  protected void fireActionPerformed(final ActionEvent e) {
+    if (actionListenersEnabled) {
+      super.fireActionPerformed(e);
+    }
+  }
+
+  public void setMenu(final JPopupMenu menu) {
+    this.menu = menu;
+  }
+}
+
 enum IconCode {
   SCISSORS("\uf0c4"),
   PLUS("\uf067"),
@@ -493,6 +593,8 @@ enum IconCode {
   FILE_TEXT_O("\uf0f6"),
   REFRESH("\uf021"),
   SIGN_IN("\uf090"),
+  CHEVRON_DOWN("\uf078"),
+  CHECK("\uf00c"),
   CIRCLE_O_NOTCH("\uf1ce");
 
   final String iconStr;

@@ -26,7 +26,7 @@
             <Bundle-Name>${bundle.name}</Bundle-Name>
 						<Bundle-Version>${project.version}</Bundle-Version>
             <Export-Package>!${bundle.pkg}.internal.*</Export-Package>
-            <Private-Package>${bundle.pkg}.*</Private-Package>
+            <Private-Package>${bundle.pkg}.*,prefuse.*</Private-Package>
             <Bundle-Activator>${bundle.pkg}.internal.CyActivator</Bundle-Activator>
 					</instructions>
 				</configuration>
